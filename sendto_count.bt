@@ -1,0 +1,39 @@
+#include <linux/socket.h>
+
+
+
+struct S {
+    uint8_t  Type;  // 8 = echo(ping)
+    uint8_t  Code;  // 0 
+    uint16_t Checksum;
+    uint16_t Id;
+    uint16_t Seq;
+}
+
+
+BEGIN {
+    printf("Tracing sendto() syscalls.\n");
+}
+
+END {
+    printf("Done tracing sendto() syscalls.\n");
+    // clear maps here
+}
+
+
+// Check if the buffer is AF_INET then look for ICMP echo request(smells like) 
+// and then count the found matches.
+tracepoint:syscalls:sys_enter_sendto { 
+    if (args.len > sizeof(struct S)) {
+        $s = (struct S *)args.buff;
+        if (args.addr->sa_family == AF_INET &&
+            $s->Type == 8 && $s->Code == 0 && $s->Checksum > 0 && $s->Id > 0 && $s->Seq > 0) {
+/*
+ Debug only:
+            printf(" ICMP Type = %02x, Code = %02x, Checksum = %04x, Id = %04x, Seq = %04x\n",
+                    $s->Type, $s->Code, $s->Checksum, $s->Id, $s->Seq);
+*/
+            @[comm] = count(); 
+        }
+    }
+}

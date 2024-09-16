@@ -1,0 +1,53 @@
+
+struct Filename{
+    char *name;
+}
+
+
+BEGIN {
+    printf("Tracing sendto() syscalls.\n");
+}
+
+END {
+    printf("Done tracing sendto() syscalls.\n");
+    // clear maps here
+}
+
+/*
+
+sudo bpftrace -lv *open :  
+
+
+tracepoint:syscalls:sys_enter_openat
+    int __syscall_nr
+    const char * filename
+    int flags
+    umode_t mode
+
+
+tracepoint:syscalls:sys_exit_open
+    int __syscall_nr
+    long ret
+
+
+*/
+
+
+
+tracepoint:syscalls:sys_enter_open,
+tracepoint:syscalls:sys_enter_openat {
+    $key = (cgroup << 32) + tid;
+	printf("TRACE OPEN: cgroup %-6d, thread: %s,  %-6d %-16s [%s] \n", cgroup, comm, tid, comm, str(args.filename));
+    @openFiles[$key] = str(args.filename);
+}
+
+
+tracepoint:syscalls:sys_exit_open,
+tracepoint:syscalls:sys_exit_openat {
+    $key = (cgroup << 32) + tid;
+    $fileName = @openFiles[$key];
+    printf("Result: Filename [%s] Open Result for  cgroup %d, tid %d %d\n", $fileName, cgroup, pid, args.ret);
+    delete(@openFiles[$key]);
+}
+
+
