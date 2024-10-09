@@ -44,6 +44,14 @@ tracepoint:syscalls:sys_exit_sendto
 
 ```
 
+```
+Generating a vmlinux.h file for kicks. 
+This is unnecessary for bpftrace, but I show it anyways.
+
+bpftool btf dump file /sys/kernel/btf/vmlinux format c > vmlinux.h
+
+```
+
 
 Our source code for our sendt-_count.bt is the following. We have to test the
 IP payload which is ICMP. 

@@ -23,17 +23,24 @@ END {
 
 // Check if the buffer is AF_INET then look for ICMP echo request(smells like) 
 // and then count the found matches.
-tracepoint:syscalls:sys_enter_sendto { 
+tracepoint:syscalls:sys_enter_sendto {
     if (args.len > sizeof(struct S)) {
         $s = (struct S *)args.buff;
-        if (args.addr->sa_family == AF_INET &&
-            $s->Type == 8 && $s->Code == 0 && $s->Checksum > 0 && $s->Id > 0 && $s->Seq > 0) {
-/*
- Debug only:
+        /*
+            Alma Linux differs. Id is 0
+        */
+        if (args.addr->sa_family == AF_INET ) {
+            // Debug only:
+/*            
             printf(" ICMP Type = %02x, Code = %02x, Checksum = %04x, Id = %04x, Seq = %04x\n",
                     $s->Type, $s->Code, $s->Checksum, $s->Id, $s->Seq);
-*/
-            @[comm] = count(); 
-        }
+*/                    
+            if ($s->Type == 8 && $s->Code == 0 && $s->Checksum > 0 && $s->Seq > 0) {
+                @[comm] = count(); 
+            }
+        } 
+    } else
+    {
+        printf("expected Args Len %d, got %d\n",sizeof(struct S), args.len);
     }
 }
